@@ -3,6 +3,7 @@ namespace Falco\OpenAPI;
 
 use Falco\App;
 use Falco\Model;
+use Falco\Params\Depends;
 use Falco\Request;
 use Falco\Response;
 use Falco\Route;
@@ -40,6 +41,9 @@ final class OpenApiGenerator
                 $parameters[] = ['name' => $name, 'in' => 'path', 'required' => true, 'schema' => $builder->fromType($type)];
                 continue;
             }
+            if (!empty($param->getAttributes(Depends::class))) {
+                continue;
+            }
             $typeName = $type instanceof \ReflectionNamedType ? $type->getName() : null;
             if ($typeName && is_subclass_of($typeName, Model::class)) {
                 $key = (new \ReflectionClass($typeName))->getShortName();
@@ -75,7 +79,11 @@ final class OpenApiGenerator
             $schemas[$key] ??= $builder->fromModel($route->responseModel);
             $content = ['application/json' => ['schema' => ['$ref' => '#/components/schemas/' . $key]]];
         }
-        $responses = ['200' => ['description' => 'Successful Response', 'content' => $content]];
+        $response = ['description' => 'Successful Response'];
+        if ($content !== null) {
+            $response['content'] = $content;
+        }
+        $responses = ['200' => $response];
         $responses['422'] = ['description' => 'Validation Error'];
         return $responses;
     }

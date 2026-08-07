@@ -52,7 +52,8 @@ final class ParamResolver
         if (!empty($param->getAttributes(Body::class))) {
             return $this->validator->coerce($request->body, $type, ['body', $name]);
         }
-        $queryKey = $param->getAttributes(Query::class)[0]->newInstance()->alias ?? $name;
+        $queryAttrs = $param->getAttributes(Query::class);
+        $queryKey = $queryAttrs ? ($queryAttrs[0]->newInstance()->alias ?? $name) : $name;
         $value = $request->query[$queryKey] ?? null;
         return $this->valueOrThrow($param, $value, ['query', $name]);
     }

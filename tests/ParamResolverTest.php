@@ -56,4 +56,12 @@ final class ParamResolverTest extends TestCase
         $args = $resolver->resolve($handler, $req, []);
         $this->assertSame('sqlite::memory:', $args['db']->dsn);
     }
+
+    public function testUnannotatedScalarIsQuery(): void
+    {
+        $resolver = new ParamResolver();
+        $req = new Request('GET', '/', ['q' => 'hello'], [], []);
+        $handler = function (string $q): string { return $q; };
+        $this->assertSame(['q' => 'hello'], $resolver->resolve($handler, $req, []));
+    }
 }
