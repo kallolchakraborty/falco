@@ -9,7 +9,9 @@ use Falco\Middleware\RateLimitMiddleware;
 use Falco\Middleware\RequestIdMiddleware;
 use Falco\Middleware\ErrorHandlerMiddleware;
 use Falco\Middleware\RequestLoggingMiddleware;
+use Falco\Middleware\AuthMiddleware;
 use Falco\Request;
+use Falco\Security\JwtService;
 use Falco\Response;
 use Falco\Logging\Logger;
 use PHPUnit\Framework\TestCase;
@@ -135,5 +137,52 @@ final class MiddlewareTest extends TestCase
         $res = $this->through($mw, $req);
         $this->assertSame(429, $res->status);
         $this->assertArrayHasKey('retry-after', $res->headers);
+    }
+
+    public function testAuthRejectsMissingToken(): void
+    {
+        $jwt = new JwtService('0123456789abcdef0123456789abcdef');
+        $res = $this->through(new AuthMiddleware($jwt), new Request('GET', '/', [], [], []));
+        $this->assertSame(401, $res->status);
+    }
+
+    public function testAuthAcceptsValidToken(): void
+    {
+        $jwt = new JwtService('0123456789abcdef0123456789abcdef');
+        $token = $jwt->encode(['sub' => '7'], 30);
+        $req = new Request('GET', '/', [], ['authorization' => "Bearer $token"], []);
+        $res = $this->through(new AuthMiddleware($jwt), $req);
+        $this->assertSame(200, $res->status);
+    }
+
+    public function testAuthStoresClaimsOnRequest(): void
+    {
+        $jwt = new JwtService('0123456789abcdef0123456789abcdef');
+        $token = $jwt->encode(['sub' => '7', 'role' => 'admin'], 30);
+        $pipeline = new MiddlewarePipeline([new AuthMiddleware($jwt)],
+            fn (Request $r): Response => new Response(200, [], $r->attributes['user'] ?? []));
+        $req = new Request('GET', '/', [], ['authorization' => "Bearer $token"], []);
+        $res = $pipeline->handle($req);
+        $this->assertSame('7', $res->body['sub']);
+        $this->assertSame('admin', $res->body['role']);
+    }
+
+    public function testAuthInvalidTokenThrows(): void
+    {
+        $jwt = new JwtService('0123456789abcdef0123456789abcdef');
+        $res = $this->through(new AuthMiddleware($jwt),
+            new Request('GET', '/', [], ['authorization' => 'Bearer garbage.token.sig'], []));
+        $this->assertSame(401, $res->status);
+    }
+
+    public function testAuthOptionalPassesThroughWithoutClaims(): void
+    {
+        $jwt = new JwtService('0123456789abcdef0123456789abcdef');
+        $seen = null;
+        $pipeline = new MiddlewarePipeline([new AuthMiddleware($jwt, required: false)],
+            function (Request $r) use (&$seen): Response { $seen = $r->attributes['user'] ?? null; return new Response(200); });
+        $res = $pipeline->handle(new Request('GET', '/', [], [], []));
+        $this->assertSame(200, $res->status);
+        $this->assertNull($seen);
     }
 }

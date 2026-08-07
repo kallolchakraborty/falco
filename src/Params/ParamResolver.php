@@ -1,9 +1,11 @@
 <?php // src/Params/ParamResolver.php
 namespace Falco\Params;
 
+use Falco\HttpException;
 use Falco\Model;
 use Falco\Request;
 use Falco\Response;
+use Falco\Security\JwtClaims;
 use Falco\Validation\Validator;
 use Falco\Validation\ValidationException;
 
@@ -38,6 +40,11 @@ final class ParamResolver
             if ($typeName === Response::class) return new Response();
             if (is_subclass_of($typeName, Model::class)) {
                 return $this->validator->coerce($request->body, $type, ['body', $name]);
+            }
+            if ($typeName === JwtClaims::class) {
+                $claims = $request->attributes['user'] ?? null;
+                if ($claims instanceof JwtClaims) return $claims;
+                throw new HttpException(401, 'Not authenticated');
             }
         }
         if (isset($pathParams[$name])) {

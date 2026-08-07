@@ -6,6 +6,7 @@ use Falco\Params\Query;
 use Falco\Params\Body;
 use Falco\Params\Depends;
 use Falco\Params\ParamResolver;
+use Falco\Security\JwtClaims;
 use Falco\Validation\ValidationException;
 use PHPUnit\Framework\TestCase;
 
@@ -62,5 +63,26 @@ final class ParamResolverTest extends TestCase
         $req = new Request('GET', '/', ['q' => 'hello'], [], []);
         $handler = function (string $q): string { return $q; };
         $this->assertSame(['q' => 'hello'], $resolver->resolve($handler, $req, []));
+    }
+
+    public function testResolvesJwtClaims(): void
+    {
+        $resolver = new ParamResolver();
+        $req = (new Request('GET', '/', [], [], []))->with('user', new JwtClaims(['sub' => '42']));
+        $handler = function (JwtClaims $c): string { return $c->get('sub'); };
+        $this->assertSame('42', $resolver->resolve($handler, $req, [])['c']->get('sub'));
+    }
+
+    public function testJwtClaimsMissingThrowsUnauthorized(): void
+    {
+        $resolver = new ParamResolver();
+        $req = new Request('GET', '/', [], [], []);
+        $handler = function (JwtClaims $c): string { return $c->get('sub'); };
+        try {
+            $resolver->resolve($handler, $req, []);
+            $this->fail('expected HttpException');
+        } catch (\Falco\HttpException $e) {
+            $this->assertSame(401, $e->statusCode);
+        }
     }
 }
