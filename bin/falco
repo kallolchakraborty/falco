@@ -1,0 +1,34 @@
+#!/usr/bin/env php
+<?php // bin/falco
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$command = $argv[1] ?? 'help';
+$appFile = $argv[2] ?? null;
+$host = '127.0.0.1';
+$port = 8000;
+$useSwoole = false;
+
+foreach (array_slice($argv, 2) as $arg) {
+    if (str_starts_with($arg, '--host=')) $host = substr($arg, 7);
+    if (str_starts_with($arg, '--port=')) $port = (int) substr($arg, 7);
+    if ($arg === '--swoole') $useSwoole = true;
+}
+
+if ($command !== 'serve' || !$appFile || !is_file($appFile)) {
+    fwrite(STDERR, "Usage: falco serve <app.php> [--host=HOST] [--port=PORT] [--swoole]\n");
+    exit(1);
+}
+
+if ($useSwoole) {
+    $app = require $appFile;
+    (new \Falco\Runtime\SwooleRuntime($host, $port))->serve($app);
+}
+passthru(sprintf(
+    'FALCO_APP=%s %s -S %s:%d %s',
+    escapeshellarg($appFile),
+    escapeshellarg(PHP_BINARY),
+    escapeshellarg($host),
+    $port,
+    escapeshellarg(dirname(__DIR__) . '/bin/server.php'),
+), $exitCode);
+exit($exitCode);
