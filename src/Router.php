@@ -6,9 +6,9 @@ final class Router
     /** @var Route[] */
     private array $routes = [];
 
-    public function add(string $method, string $path, callable $handler, ?string $responseModel = null): void
+    public function add(string $method, string $path, callable $handler, ?string $responseModel = null, array $options = []): void
     {
-        $this->routes[] = new Route($method, $path, $handler, $responseModel);
+        $this->routes[] = new Route($method, $path, $handler, $responseModel, $options);
     }
 
     public function match(string $method, string $path): ?RouteMatch

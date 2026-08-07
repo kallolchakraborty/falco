@@ -8,5 +8,6 @@ final class Route
         public readonly string $path,
         public readonly mixed $handler,
         public readonly ?string $responseModel = null,
+        public readonly array $options = [],
     ) {}
 }

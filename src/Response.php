@@ -14,6 +14,11 @@ final class Response
         return new self($status, ['content-type' => 'application/json'], $data);
     }
 
+    public static function text(string $content, int $status = 200): self
+    {
+        return new self($status, ['content-type' => 'text/plain; charset=utf-8'], $content);
+    }
+
     public function send(): void
     {
         http_response_code($this->status);

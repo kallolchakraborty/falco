@@ -9,7 +9,18 @@ final class Request
         public readonly array $query,
         public readonly array $headers,
         public readonly array $body,
+        public readonly array $attributes = [],
+        public readonly string $ip = '',
     ) {}
+
+    public function with(string $key, mixed $value): self
+    {
+        return new self(
+            $this->method, $this->path, $this->query, $this->headers, $this->body,
+            [...$this->attributes, $key => $value],
+            $this->ip,
+        );
+    }
 
     public static function fromGlobals(): self
     {
@@ -25,6 +36,6 @@ final class Request
             }
         }
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-        return new self($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, $_GET, $headers, $body);
+        return new self($_SERVER['REQUEST_METHOD'] ?? 'GET', $path, $_GET, $headers, $body, [], $_SERVER['REMOTE_ADDR'] ?? '');
     }
 }

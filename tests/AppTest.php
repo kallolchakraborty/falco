@@ -66,4 +66,22 @@ final class AppTest extends TestCase
         $res = $this->app->handle(new Request('GET', '/item', [], [], []));
         $this->assertSame(['name' => 'W', 'price' => 2.0], $res->body);
     }
+
+    public function testGlobalMiddlewareSetsAttribute(): void
+    {
+        $this->app->middleware(fn(Request $r, callable $next) => $next($r->with('flag', 1)));
+        $this->app->get('/mw', fn(Request $r) => ['flag' => $r->attributes['flag']]);
+        $res = $this->app->handle(new Request('GET', '/mw', [], [], []));
+        $this->assertSame(['flag' => 1], $res->body);
+    }
+
+    public function testRouteMiddlewareBypassesHandler(): void
+    {
+        $this->app->get('/guarded', fn() => ['ok' => true], null, [
+            'middleware' => [fn(Request $r, callable $next) => \Falco\Response::text('blocked', 403)],
+        ]);
+        $res = $this->app->handle(new Request('GET', '/guarded', [], [], []));
+        $this->assertSame(403, $res->status);
+        $this->assertSame('blocked', $res->body);
+    }
 }
