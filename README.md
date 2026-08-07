@@ -35,6 +35,8 @@ php bin/falco serve examples/items/app.php
 
 For a full, working example (CRUD with models, `#[Depends]` storage and `#[Query]` params), see `examples/items/app.php`.
 
+Note: the example's `MemoryStore` keeps items in memory only for the lifetime of one request — the dev server reboots the app per request. Use it to demo the framework, not as storage.
+
 ## Features
 
 - Type-hinted route handlers — query, path and body params resolved from plain PHP types
