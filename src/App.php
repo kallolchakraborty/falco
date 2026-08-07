@@ -17,6 +17,11 @@ final class App
     ) {
         $this->router = new Router();
         $this->resolver = new ParamResolver();
+        if ($this->docs) {
+            $docs = new OpenAPI\DocsController($this);
+            $this->get('/openapi.json', fn() => $docs->openapi());
+            $this->get('/docs', fn() => $docs->docs());
+        }
     }
 
     public function get(string $path, callable $handler, ?string $responseModel = null): void
