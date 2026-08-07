@@ -50,6 +50,15 @@ final class MiddlewareTest extends TestCase
 
     public function testErrorHandlerMapsThrowableTo500(): void
     {
+        $pipeline = new MiddlewarePipeline([new ErrorHandlerMiddleware()],
+            fn (Request $r): Response => throw new \RuntimeException('boom-msg'));
+        $res = $pipeline->handle(new Request('GET', '/', [], [], []));
+        $this->assertSame(500, $res->status);
+        $this->assertSame('Internal Server Error', $res->body['detail']);
+    }
+
+    public function testErrorHandlerDebugShowsMessageWhenDebug(): void
+    {
         $pipeline = new MiddlewarePipeline([new ErrorHandlerMiddleware(debug: true)],
             fn (Request $r): Response => throw new \RuntimeException('boom-msg'));
         $res = $pipeline->handle(new Request('GET', '/', [], [], []));
