@@ -41,7 +41,8 @@ Note: the example's `MemoryStore` keeps items in memory only for the lifetime of
 
 - Type-hinted route handlers — query, path and body params resolved from plain PHP types
 - `Model` classes with `fromArray` / `toArray` type coercion and validation
-- `#[Depends]` dependency injection, `#[Query]`, `#[Path]`, `#[Header]`, `#[Body]` param attributes
+- `#[Depends]` dependency injection, `#[Query]`, `#[Header]`, `#[Body]` param attributes
+- Path params resolved by name from the route template
 - Automatic interactive API docs at `/docs` and OpenAPI schema at `/openapi.json`
 - HTTP/1.1 built-in server (`php -S`) and an optional Swoole runtime (`--swoole`)
 

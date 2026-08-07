@@ -2,7 +2,6 @@
 namespace Falco\Tests;
 
 use Falco\Request;
-use Falco\Params\Path;
 use Falco\Params\Query;
 use Falco\Params\Body;
 use Falco\Params\Depends;
@@ -21,7 +20,7 @@ final class ParamResolverTest extends TestCase
     {
         $resolver = new ParamResolver();
         $req = new Request('POST', '/items/7', ['q' => 'abc'], [], ['name' => 'Widget', 'price' => 1.5]);
-        $handler = function (#[Path] int $item_id, #[Body] Item $item, #[Query] string $q = 'd'): array {
+        $handler = function (int $item_id, #[Body] Item $item, #[Query] string $q = 'd'): array {
             return [$item_id, $q, $item->name];
         };
         $args = $resolver->resolve($handler, $req, ['item_id' => '7']);

@@ -60,11 +60,6 @@ final class App
         return Response::json($result);
     }
 
-    public function serve(Runtime\RuntimeInterface $runtime): never
-    {
-        $runtime->serve($this);
-    }
-
     /** @return Route[] */
     public function routes(): array
     {

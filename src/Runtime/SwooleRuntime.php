@@ -4,7 +4,7 @@ namespace Falco\Runtime;
 use Falco\App;
 use Falco\Request;
 
-final class SwooleRuntime implements RuntimeInterface
+final class SwooleRuntime
 {
     public function __construct(
         private readonly string $host = '0.0.0.0',
