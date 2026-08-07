@@ -20,13 +20,13 @@ final class CorsMiddleware implements MiddlewareInterface
         $allowOrigin = $origin !== null && (in_array('*', $this->origins, true) || in_array($origin, $this->origins, true))
             ? $origin : null;
         if ($request->method === 'OPTIONS' && isset($request->headers['access-control-request-method'])) {
-            $res = new Response(204, [
-                'access-control-allow-origin' => $allowOrigin ?? '*',
+            $headers = [
                 'access-control-allow-methods' => implode(', ', $this->methods),
                 'access-control-allow-headers' => implode(', ', $this->headers),
                 'access-control-max-age' => (string) $this->maxAge,
-            ], '');
-            return $res;
+            ];
+            if ($allowOrigin !== null) $headers['access-control-allow-origin'] = $allowOrigin;
+            return new Response(204, $headers, '');
         }
         $res = $next($request);
         if ($allowOrigin !== null) $res->headers['access-control-allow-origin'] = $allowOrigin;

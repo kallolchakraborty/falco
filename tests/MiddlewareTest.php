@@ -97,6 +97,26 @@ final class MiddlewareTest extends TestCase
         $this->assertArrayNotHasKey('access-control-allow-origin', $res->headers);
     }
 
+    public function testCorsPreflightReturns204WithoutNext(): void
+    {
+        $called = false;
+        $pipeline = new MiddlewarePipeline([new CorsMiddleware(['https://ok.com'])],
+            function (Request $r) use (&$called): Response { $called = true; return new Response(200); });
+        $req = new Request('OPTIONS', '/', [], ['origin' => 'https://ok.com', 'access-control-request-method' => 'GET'], []);
+        $res = $pipeline->handle($req);
+        $this->assertSame(204, $res->status);
+        $this->assertSame('https://ok.com', $res->headers['access-control-allow-origin']);
+        $this->assertFalse($called);
+    }
+
+    public function testCorsPreflightDeniedOrigin(): void
+    {
+        $req = new Request('OPTIONS', '/', [], ['origin' => 'https://evil.io', 'access-control-request-method' => 'GET'], []);
+        $res = $this->through(new CorsMiddleware(['https://ok.com']), $req);
+        $this->assertSame(204, $res->status);
+        $this->assertArrayNotHasKey('access-control-allow-origin', $res->headers);
+    }
+
     public function testSecurityHeadersPresent(): void
     {
         $res = $this->through(new SecurityHeadersMiddleware(), new Request('GET', '/', [], [], []));

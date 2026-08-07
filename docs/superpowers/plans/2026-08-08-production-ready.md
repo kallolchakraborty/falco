@@ -700,7 +700,7 @@ use Falco\Middleware\RateLimitMiddleware;
 
     public function testCorsAllowOrigin(): void
     {
-        $res = $this->run(new CorsMiddleware(['https://app.example.com']),
+        $res = $this->through(new CorsMiddleware(['https://app.example.com']),
             new Request('GET', '/', [], ['origin' => 'https://app.example.com'], []));
         $this->assertSame('https://app.example.com', $res->headers['access-control-allow-origin']);
     }
@@ -708,13 +708,13 @@ use Falco\Middleware\RateLimitMiddleware;
     public function testCorsDeniesUnknownOrigin(): void
     {
         $req = new Request('GET', '/', [], ['origin' => 'https://evil.io'], []);
-        $res = $this->run(new CorsMiddleware(['https://ok.com']), $req);
+        $res = $this->through(new CorsMiddleware(['https://ok.com']), $req);
         $this->assertArrayNotHasKey('access-control-allow-origin', $res->headers);
     }
 
     public function testSecurityHeadersPresent(): void
     {
-        $res = $this->run(new SecurityHeadersMiddleware(), new Request('GET', '/', [], [], []));
+        $res = $this->through(new SecurityHeadersMiddleware(), new Request('GET', '/', [], [], []));
         $this->assertSame('nosniff', $res->headers['x-content-type-options']);
         $this->assertSame('DENY', $res->headers['x-frame-options']);
         $this->assertSame('max-age=31536000', $res->headers['strict-transport-security']);
@@ -725,9 +725,9 @@ use Falco\Middleware\RateLimitMiddleware;
         $store = new InMemoryRateLimitStore();
         $mw = new RateLimitMiddleware($store, 2, 60);
         $req = new Request('GET', '/', [], [], []);
-        $this->assertSame(200, $this->run($mw, $req)->status);
-        $this->assertSame(200, $this->run($mw, $req)->status);
-        $res = $this->run($mw, $req);
+        $this->assertSame(200, $this->through($mw, $req)->status);
+        $this->assertSame(200, $this->through($mw, $req)->status);
+        $res = $this->through($mw, $req);
         $this->assertSame(429, $res->status);
         $this->assertArrayHasKey('retry-after', $res->headers);
     }
