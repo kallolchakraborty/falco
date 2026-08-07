@@ -65,30 +65,39 @@ Modified:
 <?php // tests/MiddlewarePipelineTest.php
 namespace Falco\Tests;
 
-use Falco\App;
 use Falco\Request;
 use Falco\Response;
-use Falco\Http\MiddlewareInterface;
 use Falco\Http\MiddlewarePipeline;
 use PHPUnit\Framework\TestCase;
 
 final class MiddlewarePipelineTest extends TestCase
 {
-    public function testCannotInstantiateAbstract(): void {} // placeholder removed below
-
     public function testPipelineRunsAllLayersInOrder(): void
     {
         $order = [];
-        $mw1 = fn (Request $r, callable $next): Response => $order[] = 'm1' ? $next($r) : $next($r);
-        $pipeline = new MiddlewarePipeline(
-            [
-                $mw1,
-                fn (Request $r, callable $next): Response => $order[] = 'm2' ? $next($r) : $next($r),
-            ],
-            fn (Request $r): Response => $order[] = 'terminal' ? new Response() : new Response(),
-        );
+        $mw1 = function (Request $r, callable $next): Response {
+            $order[] = 'm1';
+            return $next($r);
+        };
+        $mw2 = function (Request $r, callable $next): Response {
+            $order[] = 'm2';
+            return $next($r);
+        };
+        $terminal = function (Request $r): Response {
+            $order[] = 'terminal';
+            return new Response();
+        };
+        $pipeline = new MiddlewarePipeline([$mw1, $mw2], $terminal);
         $pipeline->handle(new Request('GET', '/', [], [], []));
         $this->assertSame(['m1', 'm2', 'terminal'], $order);
+    }
+
+    public function testPipelineEmptyRunsTerminal(): void
+    {
+        $terminal = fn (Request $r): Response => Response::json(['ok' => true]);
+        $pipeline = new MiddlewarePipeline([], $terminal);
+        $res = $pipeline->handle(new Request('GET', '/', [], [], []));
+        $this->assertSame(['ok' => true], $res->body);
     }
 }
 ```
@@ -211,7 +220,7 @@ public static function text(string $content, int $status = 200): self
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `php vendor/bin/phpunit tests/MiddlewarePipelineTest.php`
-Expected: 1 test, PASS.
+Expected: 2 tests, PASS.
 
 - [ ] **Step 5: Wire the pipeline into App + Router + Route (options + middleware)**
 
@@ -276,7 +285,7 @@ private function dispatch(Request $request): Response
     return $terminal($request);
 }
 
-private function invokeHandler(RouterMatch $match, Request $request): Response
+private function invokeHandler(\Falco\RouteMatch $match, Request $request): Response
 {
     try {
         $args = $this->resolver->resolve($match->route->handler, $request, $match->pathParams);
@@ -294,7 +303,7 @@ private function invokeHandler(RouterMatch $match, Request $request): Response
 }
 ```
 
-> Note: keep the error mapping in `invokeHandler` (App still owns it). Middleware added via `App::middleware()` wraps the whole pipeline; per-route `options['middleware']` wraps only that route.
+> Note: keep the error mapping in `invokeHandler` (App still owns it). Middleware added via `App::middleware()` wraps the whole pipeline; per-route `options['middleware']` wraps only that route. The spec's `['auth' => bool]` sugar is intentionally implemented as `['middleware' => [new AuthMiddleware($jwt, required: true)]]` (Task 6) — strictly more general, no extra foo.
 
 - [ ] **Step 6: Run full suite**
 
@@ -376,7 +385,7 @@ final class LoggingTest extends TestCase
         $log = new Logger($stream);
         $log->info('ctx', ['obj' => (object)['x' => 1]]);
         rewind($stream);
-        $this->assertSame('{"x":1}', json_decode(stream_get_contents($stream), true)['obj']);
+        $this->assertSame(['x' => 1], json_decode(stream_get_contents($stream), true)['obj']);
     }
 }
 ```
@@ -500,11 +509,10 @@ use Falco\Request;
 use Falco\Response;
 use Falco\Logging\Logger;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\UsesMiddleware;
 
 final class MiddlewareTest extends TestCase
 {
-    private function run(callable|Middleware $mw, Request $req): Response
+    private function run(callable $mw, Request $req): Response
     {
         $pipeline = new MiddlewarePipeline([$mw], fn (Request $r): Response => new Response(200, [], ['ok' => true]));
         return $pipeline->handle($req);
@@ -684,18 +692,16 @@ git add -A && git commit -m "feat: request-id, error-handler, request-logging mi
 - [ ] **Step 1: Write tests (append to `tests/MiddlewareTest.php`)**
 
 ```php
+// tests/MiddlewareTest.php — append these methods inside the class (and add the imports below to the top of the file):
 use Falco\Middleware\CorsMiddleware;
 use Falco\Middleware\SecurityHeadersMiddleware;
 use Falco\Middleware\InMemoryRateLimitStore;
 use Falco\Middleware\RateLimitMiddleware;
 
-final S...
-
     public function testCorsAllowOrigin(): void
     {
-        $mw = new CorsMiddleware(['https://app.example.com']);
-        $req = new Request('GET', '/', [], ['origin' => 'https://app.example.com'], []);
-        $res = $this->runMw(new CorsMiddleware(['https://app.example.com']), $req);
+        $res = $this->run(new CorsMiddleware(['https://app.example.com']),
+            new Request('GET', '/', [], ['origin' => 'https://app.example.com'], []));
         $this->assertSame('https://app.example.com', $res->headers['access-control-allow-origin']);
     }
 
@@ -714,15 +720,19 @@ final S...
         $this->assertSame('max-age=31536000', $res->headers['strict-transport-security']);
     }
 
-    public function testRateLimit429AfterLimit(): void
+    public function testRateLimitBlocksThirdRequest(): void
     {
-        $res = $this->run(new RateLimitMiddleware(new InMemoryRateLimitStore(), 2, 60), new Request('GET', '/', [], [], []));
-        $this->assertSame(200, $res->status);
-        $this->assertSame(429, $this->run(new RateLimitMiddleware(new InMemoryRateLimitStore(), 2, 60), new Request('GET', '/', [], [], []))->status);
+        $store = new InMemoryRateLimitStore();
+        $mw = new RateLimitMiddleware($store, 2, 60);
+        $req = new Request('GET', '/', [], [], []);
+        $this->assertSame(200, $this->run($mw, $req)->status);
+        $this->assertSame(200, $this->run($mw, $req)->status);
+        $res = $this->run($mw, $req);
+        $this->assertSame(429, $res->status);
+        $this->assertArrayHasKey('retry-after', $res->headers);
     }
 }
 ```
-(The test above is illustrative; the implementer writes a fresh store each run so the second-request-past-limit shows 429.)
 
 - [ ] **Step 2: Run to verify FAIL**
 
@@ -762,7 +772,7 @@ final class CorsMiddleware implements MiddlewareInterface
             return $res;
         }
         $res = $next($request);
-        if ($isOrigin !== null) $res->headers['access-control-allow-origin'] = $allowOrigin;
+        if ($allowOrigin !== null) $res->headers['access-control-allow-origin'] = $allowOrigin;
         return $res;
     }
 }
@@ -1130,10 +1140,16 @@ final class AuthMiddleware implements MiddlewareInterface
 In `ParamResolver::resolveParam`, after the `Depends` check and before the `Request/Response` check, add:
 
 ```php
-if ($typeName === \Falco\Security\JwtClaims::class) {
-    return $request->attributes['user'] ?? throw new \Falco\Validation\ValidationException([[
-        'loc' => ['auth'], 'msg' => 'Not authenticated', 'type' => 'unauthorized',
-    ]]);
+use Falco\HttpException;
+use Falco\Security\JwtClaims;
+```
+(near the top of `ParamResolver.php`)
+
+```php
+if ($typeName === JwtClaims::class) {
+    $claims = $request->attributes['user'] ?? null;
+    if (!$claims instanceof JwtClaims) throw new HttpException(401, 'Not authenticated');
+    return $claims;
 }
 ```
 (Note: combine with the existing `if ($type instanceof \ReflectionNamedType)` block; `$typeName` is defined there.)
@@ -1551,9 +1567,15 @@ use PHPUnit\Framework\TestCase;
 
 final class IntegrationTest extends TestCase
 {
-    private function boot(): App
+    protected function setUp(): void
     {
-        $path = sys_get_temp_dir() . '/falco_test_' . bin2hex(random_bytes(4)) . '.sqlite';
+        putenv('FALCO_JWT_SECRET=0123456789abcdef0123456789abcdef');
+        putenv('FALCO_SEED_PASSWORD=pass');
+        putenv('FALCO_SQLITE_PATH=' . sys_get_temp_dir() . '/falco_it_' . bin2hex(random_bytes(4)) . '.sqlite');
+    }
+
+    protected function boot(): App
+    {
         $app = require dirname(__DIR__) . '/examples/items/app.php';
         return $app;
     }
@@ -1648,7 +1670,7 @@ if ($seedPass !== '' && !$db->query('SELECT 1 FROM users WHERE username = ?', ['
         ['admin', password_hash($seedPass, PASSWORD_DEFAULT), time()]);
 }
 
-$app->post('/login', function (array $body) use ($db, $jwt, $store): array {
+$app->post('/login', function (#[\Falco\Params\Body] array $body) use ($db, $jwt, $store): array {
     $username = (string) ($body['username'] ?? '');
     $password = (string) ($body['password'] ?? '');
     $row = $db->query('SELECT id, password_hash FROM users WHERE username = ?', [$username])->fetch();
@@ -1663,7 +1685,7 @@ $app->post('/login', function (array $body) use ($db, $jwt, $store): array {
     ];
 });
 
-$app->post('/refresh', function (array $body) use ($store, $jwt): array {
+$app->post('/refresh', function (#[\Falco\Params\Body] array $body) use ($store, $jwt): array {
     $userId = $store->consume((string) ($body['refresh_token'] ?? ''));
     if ($userId === null) throw new HttpException(401, 'Invalid refresh token');
     return [
@@ -1675,12 +1697,13 @@ $app->post('/refresh', function (array $body) use ($store, $jwt): array {
 
 $auth = new AuthMiddleware($jwt, required: true);
 
-$app->post('/items', function (array $body, \Falco\Security\JwtClaims $user) use ($db): array {
-    $id = $db->exec(
+$app->post('/items', function (#[\Falco\Params\Body] array $body, \Falco\Security\JwtClaims $user) use ($db): array {
+    $db->exec(
         'INSERT INTO items (user_id, name, price, created_at) VALUES (?, ?, ?, ?)',
         [(int) $user->get('sub'), (string) $body['name'], (float) $body['price'], time()],
     );
-    return ['id' => (int) $id, 'name' => $body['name'], 'price' => (float) $body['price']];
+    $id = (int) $db->pdo()->lastInsertId();
+    return ['id' => $id, 'name' => $body['name'], 'price' => (float) $body['price']];
 }, null, ['middleware' => [$auth]]);
 
 $app->get('/items', function (\Falco\Security\JwtClaims $user) use ($db): array {
@@ -1742,7 +1765,7 @@ git add -A && git commit -m "feat: sqlite-backed example app with jwt auth flows
 ### Task 10: README + production docs + final verification
 
 **Files:**
-- Create: `README` section update, `docs/PRODUCTION? …` — put a `PRODUCTION.md`
+- Create: `README` section update, `docs/PRODUCTION.md`
 - Modify: `README.md`
 
 **Consumes:** all tasks.
