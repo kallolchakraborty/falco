@@ -3,3 +3,4 @@
 /composer-setup.php
 /.phpunit.cache/
 /composer.lock
+/.phpunit.result.cache
