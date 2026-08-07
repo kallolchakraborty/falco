@@ -3,6 +3,7 @@ namespace Falco\Health;
 
 use Falco\App;
 use Falco\HttpException;
+use Falco\Response;
 
 final class HealthController
 {
@@ -10,14 +11,26 @@ final class HealthController
     public static function register(App $app, array $checks = []): void
     {
         $app->get('/health/live', fn (): array => ['status' => 'ok']);
-        $app->get('/health/ready', function () use ($checks): array {
+        $app->get('/health/ready', function () use ($checks): Response {
             $failed = [];
+            $checkDetails = [];
             foreach ($checks as $name => $fn) {
-                try { if ($fn() !== true) $failed[] = $name; }
-                catch (\Throwable) { $failed[] = $name; }
+                try {
+                    $ok = $fn() === true;
+                    $checkDetails[] = ['name' => $name, 'ok' => $ok];
+                    if (!$ok) $failed[] = $name;
+                } catch (\Throwable) {
+                    $checkDetails[] = ['name' => $name, 'ok' => false];
+                    $failed[] = $name;
+                }
             }
-            if ($failed) throw new HttpException(503, 'Not ready: ' . implode(', ', $failed));
-            return ['status' => 'ok'];
+            if ($failed) {
+                return Response::json([
+                    'status' => 'failed',
+                    'checks' => $checkDetails,
+                ], 503);
+            }
+            return Response::json(['status' => 'ok']);
         });
     }
 }

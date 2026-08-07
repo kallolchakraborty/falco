@@ -3,24 +3,26 @@ namespace Falco\Metrics;
 
 final class Histogram
 {
-    private array $buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5];
+    private array $buckets = ['0.005', '0.01', '0.025', '0.05', '0.1', '0.25', '0.5', '1', '2.5', '5'];
+    /** @var array<string, array<string, int>> $counts — labelKey -> bucket -> count */
     private array $counts = [];
-    private float $sum = 0;
-    private int $count = 0;
+    /** @var array<string, float> $sums — labelKey -> sum */
+    private array $sums = [];
+    /** @var array<string, int> $countsTotal — labelKey -> count */
+    private array $countsTotal = [];
 
     public function __construct(private string $name, private string $help) {}
 
     public function observe(float $seconds, array $labels = []): void
     {
-        $this->sum += $seconds;
-        $this->count += 1;
         $key = $this->key($labels);
-        $this->counts[$key] = ($this->counts[$key] ?? []);
+        $this->sums[$key] = ($this->sums[$key] ?? 0) + $seconds;
+        $this->countsTotal[$key] = ($this->countsTotal[$key] ?? 0) + 1;
+        if (!isset($this->counts[$key])) {
+            $this->counts[$key] = array_fill_keys($this->buckets, 0);
+        }
         foreach ($this->buckets as $bucket) {
-            if (!isset($this->counts[$key][$bucket])) {
-                $this->counts[$key][$bucket] = 0;
-            }
-            if ($seconds <= $bucket) {
+            if ($seconds <= (float)$bucket) {
                 $this->counts[$key][$bucket] += 1;
             }
         }
@@ -28,8 +30,8 @@ final class Histogram
 
     public function buckets(): array { return $this->buckets; }
     public function counts(): array { return $this->counts; }
-    public function sum(): float { return $this->sum; }
-    public function count(): int { return $this->count; }
+    public function sums(): array { return $this->sums; }
+    public function countsTotal(): array { return $this->countsTotal; }
     public function name(): string { return $this->name; }
     public function help(): string { return $this->help; }
     public function labelKeys(): array { return array_keys($this->counts); }

@@ -27,20 +27,22 @@ final class PrometheusTextFormatter
         return $output;
     }
 
-    private function formatHistogram(Histogram $histogram): string
+private function formatHistogram(Histogram $histogram): string
     {
         $output = "# HELP {$histogram->name()} {$histogram->help()}\n";
         $output .= "# TYPE {$histogram->name()} histogram\n";
-        
+
         foreach ($histogram->counts() as $key => $counts) {
             $labels = $this->formatLabels($histogram->labelsFor($key));
             foreach ($histogram->buckets() as $bucket) {
                 $count = $counts[$bucket] ?? 0;
-                $bucketLabel = $this->formatBucketLabel($bucket);
+                $bucketLabel = $this->formatBucketLabel($bucket, $labels);
                 $output .= "{$histogram->name()}_bucket{$bucketLabel} {$count}\n";
             }
-            $output .= "{$histogram->name()}_sum{$labels} {$histogram->sum()}\n";
-            $output .= "{$histogram->name()}_count{$labels} {$histogram->count()}\n";
+            $sum = $histogram->sums()[$key] ?? 0;
+            $count = $histogram->countsTotal()[$key] ?? 0;
+            $output .= "{$histogram->name()}_sum{$labels} {$sum}\n";
+            $output .= "{$histogram->name()}_count{$labels} {$count}\n";
         }
         return $output;
     }
@@ -55,8 +57,12 @@ final class PrometheusTextFormatter
         return '{' . implode(',', $parts) . '}';
     }
 
-    private function formatBucketLabel(float $bucket): string
+    private function formatBucketLabel(float $bucket, string $metricLabels = ''): string
     {
-        return '{le="' . $bucket . '"}';
+        if (empty($metricLabels)) {
+            return '{le="' . $bucket . '"}';
+        }
+        // metricLabels already includes { } - we need to insert le inside
+        return '{' . substr($metricLabels, 1, -1) . ',le="' . $bucket . '"}';
     }
 }
