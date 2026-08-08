@@ -25,3 +25,4 @@ final class MetricsMiddleware implements MiddlewareInterface
         return $res;
     }
 }
+

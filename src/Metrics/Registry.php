@@ -22,3 +22,4 @@ final class Registry
     /** @return (Counter|Histogram)[] */
     public function all(): array { return $this->metrics; }
 }
+

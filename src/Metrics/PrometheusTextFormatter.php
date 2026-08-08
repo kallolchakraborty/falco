@@ -66,3 +66,4 @@ private function formatHistogram(Histogram $histogram): string
         return '{' . substr($metricLabels, 1, -1) . ',le="' . $bucket . '"}';
     }
 }
+

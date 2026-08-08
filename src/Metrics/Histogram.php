@@ -43,3 +43,4 @@ final class Histogram
         return json_encode($labels);
     }
 }
+

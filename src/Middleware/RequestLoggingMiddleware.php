@@ -14,6 +14,12 @@ final class RequestLoggingMiddleware implements MiddlewareInterface
     {
         $start = microtime(true);
         $res = $next($request);
+        $this->log($request, $res, $start);
+        return $res;
+    }
+
+    private function log(Request $request, Response $res, float $start): void
+    {
         $this->logger->info('request', [
             'method' => $request->method,
             'path' => $request->path,
@@ -21,6 +27,5 @@ final class RequestLoggingMiddleware implements MiddlewareInterface
             'duration_ms' => (int) round((microtime(true) - $start) * 1000),
             'request_id' => $request->attributes['request_id'] ?? null,
         ]);
-        return $res;
     }
 }

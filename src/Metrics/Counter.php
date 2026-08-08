@@ -28,3 +28,4 @@ final class Counter
         return json_encode($labels);
     }
 }
+
