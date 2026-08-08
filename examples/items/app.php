@@ -46,7 +46,10 @@ $app->middleware(new ErrorHandlerMiddleware(debug: (bool) $cfg->get('debug', fal
 
 $app->get('/health/live', fn(): array => ['status' => 'ok']);
 
-$app->post('/login', function (array $body) use ($db, $jwt, $store): array {
+use Falco\Params\Body;
+use Falco\Params\Query;
+
+$app->post('/login', function (#[Body] array $body) use ($db, $jwt, $store): array {
     $username = (string) ($body['username'] ?? '');
     $password = (string) ($body['password'] ?? '');
     $row = $db->query('SELECT id, password_hash FROM users WHERE username = ?', [$username])->fetch();
@@ -58,7 +61,7 @@ $app->post('/login', function (array $body) use ($db, $jwt, $store): array {
     return ['access_token' => $accessToken, 'refresh_token' => $refreshToken, 'token_type' => 'bearer'];
 });
 
-$app->post('/refresh', function (array $body) use ($db, $jwt, $store): array {
+$app->post('/refresh', function (#[Body] array $body) use ($db, $jwt, $store): array {
     $userId = $store->consume((string) ($body['refresh_token'] ?? ''));
     if ($userId === null) throw new HttpException(401, 'Invalid or expired refresh token');
     $row = $db->query('SELECT username FROM users WHERE id = ?', [$userId])->fetch();

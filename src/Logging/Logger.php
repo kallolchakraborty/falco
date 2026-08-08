@@ -6,9 +6,13 @@ final class Logger implements LoggerInterface
     private const LEVELS = ['debug' => 100, 'info' => 200, 'error' => 400, 'critical' => 500];
 
     public function __construct(
-        private $stream = STDOUT,
+        private mixed $stream = null,
         private string $minLevel = 'info',
-    ) {}
+    ) {
+        if ($this->stream === null) {
+            $this->stream = defined('STDOUT') ? STDOUT : fopen('php://stdout', 'w');
+        }
+    }
 
     public function log(string $level, string $message, array $context = []): void
     {
