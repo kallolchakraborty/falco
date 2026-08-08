@@ -68,53 +68,54 @@ See also `docs/PRODUCTION.md` for environment variables, deploy targets, and sec
 
 Falco is a thin, layered framework. It is deliberately dependency-free at runtime (only stdlib + a single `vendor/autoload.php` bootstrap from Composer, which maps the PSR-4 `Falco\` namespace to `src/`). The entry point is an **app file** that returns a `Falco\App`; a small front controller dispatches each request through `Request::fromGlobals()` and calls `App::handle()`.
 
-```
-┌─────────────────────────────────────────────────────┐
-│ Front controller (HTTP server / Apache / Swoole)    │
-│   php bin/falco serve app.php  OR  public/index.php │
-└──────────────────────────────┬────────────────────┘
-                               ▼
-┌─────────────────────────────────────────────────────┐
-│ App  (src/App.php)                                  │
-│   - owns Router, ParamResolver, global middleware   │
-│   - handle(): builds a MiddlewarePipeline whose     │
-│     terminal is dispatch()                          │
-│   - dispatch(): match route; for routes with their  │
-│     own middleware, run a nested pipeline, else     │
-│     invokeHandler() directly                        │
-└───────┬────────────────────┬───────────────────────┘
-        │                    │
-        ▼                    ▼
-┌──────────────────┐ ┌─────────────────────────────┐
-│ Router           │ │ ParamResolver              │
-│ (src/Router.php) │ │ (src/Params/ParamResolver) │
-│ - match() by     │ - introspects handler args   │
-│   method + path  │ - resolves: #[Depends],      │
-│   via regex      │   typed Request/Response,    │
-│   templates      │   Model subclasses (body),   │
-│ - path params    │   JwtClaims (via req attr),  │
-│   via regex      │   path, #[Header], #[Body],  │
-│   {var} → named  │   #[Query], scalars          │
-│ - RouteMatch     │ - coerces/throws via        │
-│   holds Route +  │   Validation\Validation     │
-│   pathParams     │   Exception (FastAPI-style  │
-│                  │   "Field required")         │
-└──────────────────┘ └─────────────────────────────┘
-        │                    │
-        ▼                    ▼
-┌──────────────────┐ ┌─────────────────────────────┐
-│ Middleware       │ │ Handler → Response/Model/   │
-│ Pipeline         │ │ array  (src/App.php)        │
-│ (src/Http/)      │ - Response returned as-is      │
-│ - onion:         │ - Model → toArray() filtered   │
-│   global mw →    │ - array/scalar → Response::json│
-│   per-route mw → │ - Validation→422, HttpExcep→  │
-│   terminal       │   its status, Throwable→500    │
-│ - terminal is    │ - OpenAPI generated from      │
-│   dispatch()     │   route handlers + models     │
-│                  │   via reflection (no extra     │
-│                  │   annotations needed)         │
-└──────────────────┘ └─────────────────────────────┘
+```mermaid
+flowchart TD
+    Edge["Front controller<br/>php bin/falco serve app.php, public/index.php,<br/>or Swoole (Runtime/SwooleRuntime)"] --> Req["Request.fromGlobals()"]
+    Req --> App["App (src/App.php)"]
+
+    subgraph A["Routing"]
+        App -->|"owns"| Router["Router — match() method + path<br/>{name} to [^/]; trailing-slash tolerance"]
+        Router --> Match["RouteMatch = Route + pathParams"]
+        Match -->|"no match"| NotFound["404 Not Found"]
+    end
+
+    subgraph B["Middleware (onion)"]
+        App -->|"global middleware"| Glob["global: RequestId / RequestLogging / ErrorHandler"]
+        Glob ==> Pipeline["MiddlewarePipeline (src/Http)"]
+        Pipeline ==> PerR["per-route middleware (Route.options.middleware)<br/>e.g. AuthMiddleware"]
+        PerR ==> Handler["handler"]
+    end
+
+    subgraph C["Param resolution"]
+        App -->|"owns"| PR["ParamResolver (src/Params/ParamResolver.php)"]
+        PR --> Resolve["reflection over handler params"]
+        Resolve --> D1["Depends -> DependencyContainer"]
+        Resolve --> D2["Request / Response (typed)"]
+        Resolve --> D3["Model subclass -> Validator (#[Body])"]
+        Resolve --> D4["JwtClaims (request attr 'user')"]
+        Resolve --> D5["path params"]
+        Resolve --> D6["#[Header] / #[Body] / #[Query]"]
+        D3 --> V422["ValidationException -> 422"]
+        D6 --> V422
+    end
+
+    subgraph D["Handler result -> response"]
+        Match --> Handler
+        Handler --> Result["handler(...) result"]
+        Result -->|"Response"| Out["Response.send()"]
+        Result -->|"Model"| Tm["Model.toArray() (#[Body], nulls filtered)"]
+        Result -->|"array / scalar"| Json["Response.json()"]
+        Tm --> Json
+        Json --> Out
+        Handler -.->|"catch"| Err["ErrorHandlerMiddleware"]
+        Err -->|"Validation 422<br/>HttpException code<br/>Throwable -> 500 (debug-gated)"| Out
+    end
+
+    subgraph E["OpenAPI"]
+        App -->|"routes()"| Gen["OpenApiGenerator (src/OpenAPI)"]
+        Gen --> Sch["components.schemas"]
+        Gen --> Docs["DocsController: /openapi.json, /docs"]
+    end
 ```
 
 ### Key components
