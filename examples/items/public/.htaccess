@@ -1,0 +1,8 @@
+# Front controller dispatch
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# LiteSpeed: honor PATH_INFO / query strings
+RewriteBase /

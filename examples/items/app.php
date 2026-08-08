@@ -72,7 +72,7 @@ $app->post('/refresh', function (#[Body] array $body) use ($db, $jwt, $store): a
 
 $auth = new AuthMiddleware($jwt, required: true);
 
-$app->post('/items', function (array $body, \Falco\Security\JwtClaims $claims) use ($db): array {
+    $app->post('/items', function (#[Body] array $body, \Falco\Security\JwtClaims $claims) use ($db): array {
     $db->exec(
         'INSERT INTO items (user_id, name, price, created_at) VALUES (?, ?, ?, ?)',
         [(int) $claims->get('sub'), (string) $body['name'], (float) $body['price'], time()],

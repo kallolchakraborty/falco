@@ -6,7 +6,7 @@
 - SQLite PDO driver (or any PDO-supported database)
 - No required runtime dependencies (`composer install` only for dev tools)
 
-## Environment Variables
+## Environment
 
 | Variable | Required | Description |
 |---|---|---|
@@ -23,6 +23,38 @@ php -r "echo bin2hex(random_bytes(32));"
 
 ## Deployment
 
+### Shared hosting (Apache / LiteSpeed / Hostinger Premium)
+
+On shared hosting you cannot run a long-lived server (`php bin/falco serve`
+or Swoole), but Falco runs fine per-request through Apache's PHP handler.
+Use the front controller + `.htaccess` shipped in `examples/items/public/`:
+
+```
+examples/items/
+├── app.php          # route definitions, returns App
+├── conf.php         # env bootstrap -> returns app
+├── env.example.php  # copy to env.php and edit values
+├── data/            # writable dir for SQLite (chmod 664 or 775)
+├── migrations/
+└── public/          # <-- drop into your host's document root (public_html)
+    ├── index.php    # front controller
+    └── .htaccess
+```
+
+1. Keep the `items/` app outside your document root (it holds the JWT secret).
+2. Copy `public/index.php` + `public/.htaccess` into `public_html/`.
+3. Copy `env.example.php` → `env.php` and set a real `FALCO_JWT_SECRET`
+   (≥32 random chars). Shared hosts usually don't expose real environment
+   variables, so `conf.php` reads from `env.php` and falls back to `getenv()`.
+4. Run `composer install --no-dev` once (via hPanel Composer or locally) to
+   generate `vendor/autoload.php`; the `Falco\` PSR-4 mapping autoloads the
+   framework. There are **no runtime packages** to install.
+5. Ensure the SQLite path (default `data/app.sqlite`) points at a directory the
+   PHP process can write to, and seed: set `FALCO_SEED_PASSWORD` in `env.php`.
+
+`.htaccess` rewrites every route to `index.php`; static files are served
+directly.
+
 ### PHP Built-in Server (development/test)
 
 ```bash
@@ -31,11 +63,11 @@ php bin/falco serve examples/items/app.php --host=0.0.0.0 --port=8000
 
 ### Swoole (production)
 
+Requires `ext-swoole`. Behind a reverse proxy, set the proper headers (Swoole provides `$_SERVER['REMOTE_ADDR']` etc.).
+
 ```bash
 php bin/falco serve examples/items/app.php --swoole
 ```
-
-Requires `ext-swoole`. Behind a reverse proxy, set the proper headers (Swoole provides `$_SERVER['REMOTE_ADDR']` etc.).
 
 ### nginx + php-fpm
 

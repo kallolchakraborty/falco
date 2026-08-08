@@ -5,3 +5,5 @@
 /composer.lock
 /.phpunit.result.cache
 /examples/items/data.sqlite
+/examples/items/data/
+/examples/items/data/app.sqlite
