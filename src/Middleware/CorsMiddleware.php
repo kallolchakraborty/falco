@@ -24,12 +24,16 @@ final class CorsMiddleware implements MiddlewareInterface
                 'access-control-allow-methods' => implode(', ', $this->methods),
                 'access-control-allow-headers' => implode(', ', $this->headers),
                 'access-control-max-age' => (string) $this->maxAge,
+                'vary' => 'origin',
             ];
             if ($allowOrigin !== null) $headers['access-control-allow-origin'] = $allowOrigin;
             return new Response(204, $headers, '');
         }
         $res = $next($request);
-        if ($allowOrigin !== null) $res->headers['access-control-allow-origin'] = $allowOrigin;
+        if ($allowOrigin !== null) {
+            $res->headers['access-control-allow-origin'] = $allowOrigin;
+            $res->headers['vary'] = trim(($res->headers['vary'] ?? '') . ', origin', ', ');
+        }
         return $res;
     }
 }

@@ -5,6 +5,7 @@ use Falco\Http\MiddlewarePipeline;
 use Falco\Middleware\CorsMiddleware;
 use Falco\Middleware\SecurityHeadersMiddleware;
 use Falco\Middleware\InMemoryRateLimitStore;
+use Falco\Middleware\SqliteRateLimitStore;
 use Falco\Middleware\RateLimitMiddleware;
 use Falco\Middleware\RequestIdMiddleware;
 use Falco\Middleware\ErrorHandlerMiddleware;
@@ -137,6 +138,33 @@ final class MiddlewareTest extends TestCase
         $res = $this->through($mw, $req);
         $this->assertSame(429, $res->status);
         $this->assertArrayHasKey('retry-after', $res->headers);
+    }
+
+    public function testSqliteRateLimitStorePersistsAcrossInstances(): void
+    {
+        $db = new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+        $store = new SqliteRateLimitStore(pdo: $db);
+        $this->assertSame(1, $store->increment('ip:1.2.3.4', 60));
+        $this->assertSame(2, $store->increment('ip:1.2.3.4', 60));
+        $fresh = new SqliteRateLimitStore(pdo: $db);
+        $this->assertSame(3, $fresh->increment('ip:1.2.3.4', 60));
+    }
+
+    public function testCorsAddsVaryOriginOnActualResponse(): void
+    {
+        $res = $this->through(new CorsMiddleware(['https://ok.com']),
+            new Request('GET', '/', [], ['origin' => 'https://ok.com'], []));
+        $this->assertSame('origin', $res->headers['vary']);
+        $this->assertSame('https://ok.com', $res->headers['access-control-allow-origin']);
+    }
+
+    public function testCorsPreflightAdvertisesConfiguredMethods(): void
+    {
+        $req = new Request('OPTIONS', '/', [],
+            ['origin' => 'https://ok.com', 'access-control-request-method' => 'GET'], []);
+        $res = $this->through(new CorsMiddleware(['https://ok.com'], methods: ['GET']), $req);
+        $this->assertSame('GET', $res->headers['access-control-allow-methods']);
+        $this->assertSame('origin', $res->headers['vary']);
     }
 
     public function testAuthRejectsMissingToken(): void

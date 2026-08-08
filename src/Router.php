@@ -13,6 +13,9 @@ final class Router
 
     public function match(string $method, string $path): ?RouteMatch
     {
+        if ($path !== '/' && str_ends_with($path, '/')) {
+            $path = rtrim($path, '/');
+        }
         foreach ($this->routes as $route) {
             if ($route->method !== $method) continue;
             $params = $this->matchTemplate($route->path, $path);
