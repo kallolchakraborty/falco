@@ -12,17 +12,26 @@ use Falco\Metrics\MetricsMiddleware;
 use Falco\Metrics\PrometheusTextFormatter;
 use Falco\Metrics\Registry;
 use Falco\Middleware\AuthMiddleware;
+use Falco\Middleware\CorsMiddleware;
 use Falco\Middleware\ErrorHandlerMiddleware;
+use Falco\Middleware\RateLimitMiddleware;
 use Falco\Middleware\RequestIdMiddleware;
 use Falco\Middleware\RequestLoggingMiddleware;
+use Falco\Middleware\SecurityHeadersMiddleware;
+use Falco\Middleware\InMemoryRateLimitStore;
+use Falco\Middleware\SqliteRateLimitStore;
 use Falco\Response;
 use Falco\Security\JwtService;
 
 $cfg = new Config([
     'jwt_secret' => (string) (getenv('FALCO_JWT_SECRET') ?: ''),
+    'debug' => (bool) (getenv('FALCO_DEBUG') ?: false),
     'metrics' => (string) (getenv('FALCO_METRICS') ?: '0'),
     'cors_origins' => array_filter(array_map('trim', explode(',', (string) (getenv('FALCO_CORS_ORIGINS') ?: '')))),
     'sqlite_path' => (string) (getenv('FALCO_SQLITE_PATH') ?: __DIR__ . '/data.sqlite'),
+    'rate_limit' => (int) (getenv('FALCO_RATE_LIMIT') ?: '100'),
+    'rate_window' => (int) (getenv('FALCO_RATE_WINDOW') ?: '60'),
+    'rate_limit_store' => (string) (getenv('FALCO_RATE_LIMIT_STORE') ?: 'memory'),
 ]);
 
 if (strlen($cfg->get('jwt_secret')) < 32) {
@@ -42,7 +51,25 @@ $app = new App(title: 'Items API', version: '1.0');
 
 $app->middleware(new RequestIdMiddleware());
 $app->middleware(new RequestLoggingMiddleware($logger));
-$app->middleware(new ErrorHandlerMiddleware(debug: (bool) $cfg->get('debug', false)));
+$app->middleware(new ErrorHandlerMiddleware(debug: $cfg->get('debug')));
+
+// CORS: empty origins list = deny cross-origin (no allow-origin header emitted).
+// Set FALCO_CORS_ORIGINS to a whitelist (or '*' to echo the requesting origin).
+$app->middleware(new CorsMiddleware($cfg->get('cors_origins', [])));
+
+// Security headers: HSTS is emitted by default (set FALCO_SECURITY_HSTS=0 to disable
+// behind a TLS-terminating proxy that already sets it).
+$hsts = (string) (getenv('FALCO_SECURITY_HSTS') ?: '1') !== '0';
+$app->middleware(new SecurityHeadersMiddleware(hsts: $hsts));
+
+// Rate limiting: per-IP sliding window. Default in-memory store is per-process;
+// on multi-worker hosts (php-fpm on shared hosting) use FALCO_RATE_LIMIT_STORE=sqlite
+// to share the window via the same SQLite database.
+$rateStore = match ($cfg->get('rate_limit_store')) {
+    'sqlite' => new SqliteRateLimitStore('sqlite:' . $cfg->get('sqlite_path')),
+    default  => new InMemoryRateLimitStore(),
+};
+$app->middleware(new RateLimitMiddleware($rateStore, $cfg->get('rate_limit', 100), $cfg->get('rate_window', 60)));
 
 $app->get('/health/live', fn(): array => ['status' => 'ok']);
 

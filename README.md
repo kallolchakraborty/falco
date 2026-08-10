@@ -155,10 +155,10 @@ And `docs/PRODUCTION.md` for environment variables, deploy targets, and security
 ### Security checklist
 
 - `FALCO_JWT_SECRET` ≥ 32 random bytes (`php -r 'echo bin2hex(random_bytes(32));'`); rotate periodically.
-- Keep `debug` `false` in production so 500 responses hide internals.
-- Set `FALCO_CORS_ORIGINS` explicitly — an empty value defaults to the insecure `*`.
-- Terminate TLS at the reverse proxy / host and enable HSTS there (Falco does not emit HSTS).
-- Restrict access to `/metrics` (auth or firewall) — it reveals request volume.
+- Keep `debug` off in production (`FALCO_DEBUG=0`) so 500 responses hide internals.
+- **CORS** is deny-by-default: an empty `FALCO_CORS_ORIGINS` emits no `access-control-allow-origin`. Set an explicit whitelist (or `*` to echo the requesting origin) — never ship `*` to untrusted origins.
+- `SecurityHeadersMiddleware` emits `Strict-Transport-Security` (HSTS) by default. Behind a TLS-terminating proxy that already sets HSTS, pass `FALCO_SECURITY_HSTS=0` to avoid duplicates.
+- `FALCO_METRICS=1` exposes request volume — place `/metrics` behind auth or a firewall.
 - Keep `examples/items/` and the SQLite file **outside** the document root; only `public/` should be web-accessible.
 
 ## Architecture
@@ -394,9 +394,14 @@ Falco reads configuration from process environment variables (see `docs/PRODUCTI
 |---|---|---|
 | `FALCO_JWT_SECRET` | Yes | HMAC secret for JWT (≥ 32 chars) |
 | `FALCO_SQLITE_PATH` | No | SQLite file path (default `data/app.sqlite`) |
-| `FALCO_CORS_ORIGINS` | No | Comma-separated allowed origins |
+| `FALCO_CORS_ORIGINS` | No | Comma-separated allowed origins; empty = deny (deny by default) |
 | `FALCO_METRICS` | No | `1` enables `/metrics` |
 | `FALCO_SEED_PASSWORD` | No | Seeds an `admin` user with this password on startup |
+| `FALCO_DEBUG` | No | `1` exposes internal detail on 500s (dev only) |
+| `FALCO_RATE_LIMIT` | No | Max requests per window per IP (default `100`) |
+| `FALCO_RATE_WINDOW` | No | Rate-limit window in seconds (default `60`) |
+| `FALCO_RATE_LIMIT_STORE` | No | `memory` (default, per-process) or `sqlite` (shared across php-fpm workers) |
+| `FALCO_SECURITY_HSTS` | No | `0` disables HSTS; otherwise `Strict-Transport-Security` is emitted |
 
 ```bash
 php -r "echo bin2hex(random_bytes(32));"
