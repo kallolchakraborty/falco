@@ -171,59 +171,69 @@ And `docs/PRODUCTION.md` for environment variables, deploy targets, and security
 Falco is a thin, layered framework. It is deliberately dependency-free at runtime (only stdlib + a single `vendor/autoload.php` bootstrap from Composer, which maps the PSR-4 `Falco\` namespace to `src/`). The entry point is an **app file** that returns a `Falco\App`; a small front controller dispatches each request through `Request::fromGlobals()` and calls `App::handle()`.
 
 ```
-            ┌─────────────────────────────────────────────┐
-            │  Front controller (Apache / nginx-fpm /     │
-            │  built-in server / Swoole)                  │
-            │  php bin/falco serve app.php  OR              │
-            │  examples/items/public/index.php            │
-            └─────────────────────┬───────────────────────┘
-                                  ▼
-            ┌─────────────────────────────────────────────┐
- App        │  App  (src/App.php)                         │
-            │    • owns Router, ParamResolver,            │
-            │      and a global middleware list           │
-            │    • handle(): push request through the     │
-            │      global MiddlewarePipeline, terminal   │
-            │      = dispatch()                           │
-            │    • dispatch(): match route → if the route│
-            │      has per-route middleware, run a nested │
-            │      pipeline, else invokeHandler()         │
-            └─────────┬────────────────────┬──────────────┘
-          owns        │            owns     │
-    ┌──────────┐      ▼            ┌─────────┐
-    │ Router   │     ──────┬       │ Params  │
-    │(Router)  │  match()  │       │ Resolver│
-    │ • regex  │     ▼     │       │ (reflect│
-    │   {name}│  RouteMatch │       │  handler│
-    │ • trim/ │  pathParams │       │  params)│
-    └──────────┘      │           └────┬────┘
-                      │                │
-                      ▼                ▼
-                ┌──────────────┐ ┌──────────────────┐
-                │ Per-route    │ │ Handler          │
-                │ middleware   │ │ (your closure)   │
-                │ (e.g. Auth)  │ │  → Response /    │
-                └─────┬────────┘ │  Model / array / │
-                      ▼          │  scalar          │
-            ┌─────────────────┐  └───────┬──────────┘
-            │ invokeHandler() │          │
-            │ • resolve args │          ▼
-            │ • call handler │   ┌──────────────────┐
-            │ • catch & map  │   │ Model.toArray() │
-            └───────┬─────────┘   │  (nulls filtered)│
-                    │             └────────┬──────────┘
-                    ▼                      ▼
-            ┌──────────────────┐   ┌──────────────────┐
-            │ Response.json()  │   │ Response::json() │
-            │ Response::send() │   │ (array / scalar) │
-                    │             └───────┬──────────┘
-                    ▼                     │
-            ┌──────────────────┐        │
-            │  HTTP response     ◄───────┘
-            └──────────────────┘
+            ┌─────────────────────────────────────────────────────┐
+            │  Front controller                                  │
+            │  php bin/falco serve app.php                       │
+            │  OR examples/items/public/index.php (Apache/fpm)   │
+            │  OR Swoole (Runtime/SwooleRuntime)                 │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  App  (src/App.php)                                 │
+            │    • owns Router, ParamResolver, global middleware  │
+            │    • handle(): run the global MiddlewarePipeline;   │
+            │      terminal = dispatch()                          │
+            │    • dispatch(): match route → 404 on miss; routes  │
+            │      with per-route middleware run a NESTED         │
+            │      pipeline, otherwise invokeHandler()            │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Router  (src/Router.php)                           │
+            │    {name} → [^/] (single segment), trim trailing    │
+            │    / before matching; RouteMatch = Route + params   │
+            │    (404 on no match)                                │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  ParamResolver  (src/Params/ParamResolver.php)      │
+            │    Reflects handler params and binds each one:       │
+            │    #[Depends] → DependencyContainer,                 │
+            │    Request/Response, Model → #[Body] (validated),   │
+            │    JwtClaims (req attr 'user'), path params,        │
+            │    #[Header], #[Body], #[Query] (default)           │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Per-route middleware  (Route options['middleware']) │
+            │  e.g. AuthMiddleware (optional JWT gate)            │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  invokeHandler()  (src/App.php)                     │
+            │    • resolve args via ParamResolver                  │
+            │    • call handler → Response / Model / array / scalar│
+            │    • catch & map:                                    │
+            │        ValidationException → 422                     │
+            │        HttpException       → its status code         │
+            │        Throwable           → 500 (debug-gated msg)  │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Result normalization                                │
+            │    Response  → sent as-is                           │
+            │    Model     → toArray() (nulls stripped) → JSON    │
+            │    array/scalar → Response::json()                  │
+            └──────────────────────────┬────────────────────────┘
+                                       ▼
+            ┌─────────────────────────────────────────────────────┐
+            │  Response::send()  (src/Response.php)               │
+            │    http_response_code() + headers() + JSON body   │
+            └─────────────────────────────────────────────────────┘
 
-  OpenAPI: App.routes() → OpenApiGenerator → SchemaBuilder →
-           /openapi.json (schema) + /docs (Swagger UI)
+  OpenAPI: App::routes() → OpenApiGenerator → SchemaBuilder
+           → /openapi.json (schema) + /docs (Swagger UI), by reflection.
+
 ```
 
 (The ASCII block above and the [Mermaid diagram](#mermaid-diagram) below are two views of the same flow.)
