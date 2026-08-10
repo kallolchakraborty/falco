@@ -6,7 +6,7 @@ use Falco\Model;
 /**
  * Coerces a raw value to a reflected type (int/float/string/bool/array/null,
  * BackedEnum, Model subclass, and union types). Type mismatches throw
- * {@see ValidationException} with a FastAPI-shaped `loc/msg/type` payload.
+ * {@see ValidationException} with a Falco `loc`/`msg`/`type` payload.
  */
 final class Validator
 {

@@ -5,7 +5,7 @@ Status: Approved (brainstorming → design drawing)
 
 ## 1. Goal
 
-Turn Falco (`falco/falco`, FastAPI-style PHP 8.1+ framework, zero runtime
+Turn Falco (`falco/falco`, PHP 8.1+ web framework, zero runtime
 deps) into a production-ready framework library plus a hardened example app.
 Scope, confirmed with the user:
 
@@ -71,8 +71,8 @@ interface MiddlewareInterface
   - `'auth' => ['required' => bool, 'scopes' => []]` — convenience flag
     handled by the built-in `AuthMiddleware` (see below).
 - `App::dispatch`/`handle` unchanged externally: `handle(Request): Response`.
-- 404 `{"detail":"Not Found"}`, 422 FastAPI error shape unchanged,
-  `HttpException` mapping unchanged.
+- 404 `{"detail":"Not Found"}`; 422 uses Falco's `loc`/`msg`/`type` error shape;
+  `HttpException` status-code mapping unchanged.
 
 ## Shared Middleware — `Falco\Middleware`
 
@@ -86,8 +86,8 @@ interface MiddlewareInterface
 - Maps: `ValidationException` → 422; `HttpException` → its `statusCode` with
   `getMessage()`; other `Throwable` → 500 `Internal Server Error`.
 - In `debug` mode the 500 response echoes `getMessage()`; in prod it logs and
-  returns the generic message. 422 keeps FastAPI's
-  `{'detail': [{loc, msg, type}]}` shape.
+  returns the generic message. 422 keeps the `loc`/`msg`/`type` shape
+  `{'detail': [{loc, msg, type}]}`.
 
 ### `RequestLoggingMiddleware`
 - One structured INFO log line per request: `method`, `path`, `status`,
@@ -242,7 +242,7 @@ Wired per-route via route options (`['auth' => true]` or
   - `POST /logout` — marks refresh token consumed.
   - Items CRUD, each scoped to `user_id` from JWT: `POST /items`,
     `GET /items`, `GET /items/{item_id}`, `DELETE /items/{item_id}`.
-  - 404/422 stay FastAPI-shaped.
+  - 404/422 error shapes unchanged.
 - Middleware wired in app: RequestId, ErrorHandler, RequestLogging, Health,
   metrics (if enabled). Auth is per-route (auth on items; none on login).
 

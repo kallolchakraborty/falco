@@ -2,7 +2,7 @@
 namespace Falco\Validation;
 
 /**
- * Holds FastAPI-style error details: an array of `{loc, msg, type}` objects.
+ * Holds Falco-style error details: an array of `{loc, msg, type}` objects.
  * Mapped to HTTP 422 by App / ErrorHandlerMiddleware.
  */
 final class ValidationException extends \Exception

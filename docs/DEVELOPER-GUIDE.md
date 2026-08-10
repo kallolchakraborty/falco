@@ -140,7 +140,7 @@ and binds each one, in this order (first match wins):
 8. **`#[Query($alias?)]` / bare scalar/array** → query-string value.
 
 > A bare scalar parameter with no attribute is **query** by default — this is
-> the FastAPI ergonomic. Use `#[Body]` (or a `Model`) to read the JSON body.
+> the framework's ergonomic. Use `#[Body]` (or a `Model`) to read the JSON body.
 
 Attributes live in `src/Params/Body.php`, `Query.php`, `Header.php`, `Depends.php`.
 Each accepts an optional `alias`.
@@ -391,7 +391,7 @@ What's tested:
 - `ParamResolverTest` — query/body/path/header/model/Depends/JwtClaims resolution + missing-field 422.
 - `MiddlewareTest` — CORS allow/deny, preflight, security headers, rate-limit tripping, auth accept/reject/invalid/optional.
 - `MiddlewarePipelineTest` — ordering + empty-pipeline.
-- `ModelTest`, `ValidatorTest` — coercion + FastAPI-style errors.
+- `ModelTest`, `ValidatorTest` — coercion + the `loc`/`msg`/`type` error shape (422).
 - `OpenApiTest` — schema + docs generation.
 - `MetricsTest`, `HealthTest` — histogram labels, readiness 503 shape.
 - `DataTest` — `Connection` + refresh-token issue/consume/replay/revocation.
@@ -426,7 +426,7 @@ final class ExampleTest extends TestCase {
 ## 17. Project layout
 
 ```
-FastAPI-PHP/
+falco/
 ├── bin/
 │   ├── falco            # CLI: `serve <app.php> [--swoole]`
 │   └── server.php       # php -S router (reads FALCO_APP)

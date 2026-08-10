@@ -103,7 +103,7 @@ final class App
             $args = $this->resolver->resolve($match->route->handler, $request, $match->pathParams);
             $result = ($match->route->handler)(...$args);
         } catch (ValidationException $e) {
-            // FastAPI-shaped validation errors -> 422
+            // Falco's loc/msg/type validation errors -> 422
             return Response::json(['detail' => $e->errors], 422);
         } catch (HttpException $e) {
             return Response::json(['detail' => $e->getMessage()], $e->statusCode);

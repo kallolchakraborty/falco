@@ -22,8 +22,9 @@ use Falco\Validation\ValidationException;
  *  8. #[Query] / (default)  → query-string value, coerced to type
  *
  * A bare scalar/array parameter with no attribute defaults to query resolution
- * (matching FastAPI ergonomics). Missing required values throw a
- * FastAPI-shaped ValidationException (422).
+ * (a convention the framework adopts: plain params resolve from the query
+ * string). Missing required values throw a Falco `loc`/`msg`/`type`
+ * ValidationException (422).
  */
 final class ParamResolver
 {

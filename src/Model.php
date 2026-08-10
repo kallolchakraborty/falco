@@ -7,7 +7,7 @@ use Falco\Validation\ValidationException;
 /**
  * Base class for request-body models. Subclass it and declare public typed
  * properties; {@see Validator} coerces incoming data and {@see fromArray()}
- * throws a FastAPI-shaped `ValidationException` (422) for missing/invalid fields.
+ * throws a Falco `loc`/`msg`/`type` `ValidationException` (422) for missing/invalid fields.
  */
 abstract class Model
 {

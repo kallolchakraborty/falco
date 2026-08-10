@@ -1,8 +1,8 @@
 # Falco
 
-A FastAPI-style web framework for PHP 8.1+. Declarative route handlers with parameters resolved by type and attribute, automatic OpenAPI 3.1 docs, JWT auth with refresh-token rotation, structured JSON logging, Prometheus metrics, and health checks — all with **zero runtime dependencies** (PHP standard library + a Composer PSR-4 autoloader).
+A modern web framework for PHP 8.1+. Declarative route handlers with parameters resolved by type and attribute, automatic OpenAPI 3.1 docs, JWT auth with refresh-token rotation, structured JSON logging, Prometheus metrics, and health checks — all with **zero runtime dependencies** (PHP standard library + a Composer PSR-4 autoloader).
 
-Falco borrows FastAPI's ergonomics — function handlers whose parameters are resolved by type — and adapts them to PHP 8.x (constructor property promotion, attributes, named arguments, readonly/final classes). It is a single process boundary, `App::handle(Request): Response`; there is no service container or magic: application wiring is plain PHP.
+Handlers' parameters are resolved by PHP type and attribute (inspired by modern typed frameworks) — built on PHP 8.x (constructor property promotion, attributes, named arguments, readonly/final classes). Each request is a single process boundary, `App::handle(Request): Response`, with no service container or magic: application wiring is plain PHP.
 
 ## Table of contents
 
@@ -33,7 +33,7 @@ Falco borrows FastAPI's ergonomics — function handlers whose parameters are re
 ## Install
 
 ```bash
-git clone <repo> && cd FastAPI-PHP
+git clone <repo> && cd falco
 php composer.phar install
 # Composer is only used for development (PHPUnit) autoloading.
 # At runtime Falco has ZERO dependencies: it loads its own PSR-4 map.
@@ -124,7 +124,7 @@ For a full, production-ready example — JWT auth with refresh rotation, SQLite 
 ## Features
 
 - **Type-hinted handlers** — query, path, and body parameters are resolved from plain PHP types and `Falco\Params` attributes.
-- **`Model` classes** with reflection-driven `fromArray()`/`toArray()` coercion and FastAPI-style validation errors.
+- **`Model` classes** with reflection-driven `fromArray()`/`toArray()` coercion and `loc`/`msg`/`type` validation errors (JSON 422).
 - **Param attributes** — `#[Depends]` (DI), `#[Query]`, `#[Header]`, `#[Body]`.
 - **Path params** resolved by name from the route template (`{name}` → `$name`).
 - **Automatic OpenAPI 3.1** — interactive Swagger UI at `/docs` and machine-readable schema at `/openapi.json`, generated entirely by reflection (no annotations to maintain).
@@ -303,7 +303,7 @@ flowchart TD
 
 ### Router
 
-`src/Router.php` keeps a simple `Route[]` table (insertion-order, so routes are matched in registration order — last registration wins on ambiguity). Matching is a **linear scan**, which is fine for the route counts typical of a single service (hundreds, not thousands). Path templates use `{name}` segments compiled into a single anchored PCRE per route with a named capture group `(?P<name>[^/]+)` — `[^/]` so one segment can't swallow a `/`, which prevents the classic FastAPI-style `/items/1/details` being eaten by `/items/{id}`.
+`src/Router.php` keeps a simple `Route[]` table (insertion-order, so routes are matched in registration order — last registration wins on ambiguity). Matching is a **linear scan**, which is fine for the route counts typical of a single service (hundreds, not thousands). Path templates use `{name}` segments compiled into a single anchored PCRE per route with a named capture group `(?P<name>[^/]+)` — `[^/]` so one segment can't swallow a `/`, which prevents `/items/{id}` greedily consuming `/items/1/details`.
 
 Trailing-slash tolerance: a non-root path ending in `/` has it trimmed before matching, so `/items/` is served by the `/items` route. Empty path → `/`.
 
@@ -322,7 +322,7 @@ OpenAPI schema generation iterates the same `Router` table (no separate route re
 7. **`#[Body]`** → JSON body coerced to the declared type.
 8. **Everything else** → assumed `#[Query]`; required only if the parameter has no default and its type is non-nullable, otherwise `Field required` (422).
 
-`#[Query]` is the implicit default, which is why a bare `string $name` reads from the query string — matching FastAPI's philosophy of "plain function parameters are query params."
+`#[Query]` is the implicit default, which is why a bare `string $name` reads from the query string — matching the framework's philosophy of "plain function parameters are query params."
 
 The attributes live in `src/Params/` (`Query.php`, `Header.php`, `Body.php`, `Depends.php`) and are plain `#[Attribute]` classes with optional constructor args.
 
@@ -333,7 +333,7 @@ The attributes live in `src/Params/` (`Query.php`, `Header.php`, `Body.php`, `De
 - `Model::fromArray(array $data): static` iterates public non-static properties; each becomes a key in the constructor payload, coerced through `Validator::coerce()`. Missing required fields (no default, non-nullable type) throw `ValidationException` with `loc: ["body", $name]`.
 - `toArray(): array` serializes public properties, recursing into nested `Model` instances.
 
-`src/Validation/Validator.php` coerces scalars, typed arrays, `BackedEnum`, `null`/`nullable`, union types (`anyOf` in OpenAPI via `SchemaBuilder`), and `Model` subclasses (recursive). Type mismatches become `ValidationException` with a FastAPI-shaped `loc`/`msg`/`type` payload — the same shape produced over the wire on 422.
+`src/Validation/Validator.php` coerces scalars, typed arrays, `BackedEnum`, `null`/`nullable`, union types (`anyOf` in OpenAPI via `SchemaBuilder`), and `Model` subclasses (recursive). Type mismatches become `ValidationException` with the framework's `loc`/`msg`/`type` payload — the same shape produced over the wire on 422.
 
 `src/OpenAPI/SchemaBuilder.php` mirrors `Validator`'s logic to turn PHP types into OpenAPI 3.1 schemas (`int→integer`, `float→number`, `bool→boolean`, `array→array`, `BackedEnum→enum`, union→`anyOf`, `Model→$ref`). The generator runs reflection only — there is no attribute/annotation overhead for the user.
 
