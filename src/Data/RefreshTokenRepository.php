@@ -3,6 +3,11 @@ namespace Falco\Data;
 
 use Falco\Security\RefreshTokenStoreInterface;
 
+/**
+ * SQLite-backed {@see RefreshTokenStoreInterface}: stores SHA-256 hashes,
+ * enforces single-use (`consumed_at`) and `expires_at`, supports per-user
+ * revocation via {@see revokeAll()}.
+ */
 final class RefreshTokenRepository implements RefreshTokenStoreInterface
 {
     public function __construct(private Connection $conn) {}

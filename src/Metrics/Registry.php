@@ -1,6 +1,7 @@
 <?php // src/Metrics/Registry.php
 namespace Falco\Metrics;
 
+/** Holds the set of Counter/Histogram metrics; `all()` feeds the Prometheus formatter. */
 final class Registry
 {
     private array $metrics = [];

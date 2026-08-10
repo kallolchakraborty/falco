@@ -6,6 +6,10 @@ use Falco\Request;
 use Falco\Response;
 use Falco\Logging\LoggerInterface;
 
+/**
+ * Emits a single JSON log line per request (method, path, status, duration_ms,
+ * request_id). Placed in the pipeline so it wraps the downstream handler.
+ */
 final class RequestLoggingMiddleware implements MiddlewareInterface
 {
     public function __construct(private LoggerInterface $logger) {}

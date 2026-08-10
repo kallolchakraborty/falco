@@ -7,6 +7,12 @@ use Falco\Response;
 use Falco\Security\JwtService;
 use Falco\Security\JwtClaims;
 
+/**
+ * Per-route optional auth. Reads `Authorization: Bearer`, decodes via
+ * {@see JwtService}, and attaches a {@see JwtClaims} to request attribute
+ * 'user' for the resolver. `required: true` → 401 on missing/invalid;
+ * `required: false` → passes through with no claims.
+ */
 final class AuthMiddleware implements MiddlewareInterface
 {
     public function __construct(private JwtService $jwt, private bool $required = true) {}

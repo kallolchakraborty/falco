@@ -1,6 +1,7 @@
 <?php // src/Metrics/Counter.php
 namespace Falco\Metrics;
 
+/** Prometheus `counter` metric. `inc(labels)` increments; values are grouped by label set. */
 final class Counter
 {
     private array $values = [];

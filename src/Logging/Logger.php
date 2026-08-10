@@ -1,6 +1,11 @@
 <?php
 namespace Falco\Logging;
 
+/**
+ * Line-structured JSON logger. Emits one JSON object per line to a stream
+ * (default STDOUT). Safe against json_encode failure: invalid UTF-8 is
+ * substituted and JsonSerializable results are re-descended.
+ */
 final class Logger implements LoggerInterface
 {
     private const LEVELS = ['debug' => 100, 'info' => 200, 'error' => 400, 'critical' => 500];

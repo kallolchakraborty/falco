@@ -1,6 +1,11 @@
 <?php // src/Middleware/SqliteRateLimitStore.php
 namespace Falco\Middleware;
 
+/**
+ * {@see RateLimitStoreInterface} backed by a SQLite table so rate-limit
+ * windows survive across php-fpm workers. Uses a transaction + ON CONFLICT
+ * upsert to stay correct under concurrency.
+ */
 final class SqliteRateLimitStore implements RateLimitStoreInterface
 {
     private \PDO $pdo;

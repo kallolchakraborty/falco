@@ -1,6 +1,14 @@
 <?php // src/Request.php
 namespace Falco;
 
+/**
+ * Immutable HTTP request value object.
+ *
+ * `fromGlobals()` is the production entry point (parses `$_SERVER`/`$_GET`/
+ * `php://input`/JSON body). `with()` returns a new instance adding a request
+ * attribute — this is how middleware (e.g. {@see \Falco\Middleware\AuthMiddleware})
+ * passes data (`user => JwtClaims`) to handlers and the resolver.
+ */
 final class Request
 {
     public function __construct(
@@ -22,6 +30,7 @@ final class Request
         );
     }
 
+    /** Build a request from PHP globals; JSON body falls back to `[]` on parse error. */
     public static function fromGlobals(): self
     {
         $raw = file_get_contents('php://input') ?: '';

@@ -3,6 +3,11 @@ namespace Falco\OpenAPI;
 
 use Falco\Model;
 
+/**
+ * Maps PHP reflection types to OpenAPI 3.1 schemas: scalars, nullable →
+ * `nullable`, BackedEnum → `enum`, union types → `anyOf`, Model subclasses
+ * → `$ref` into `components.schemas`.
+ */
 final class SchemaBuilder
 {
     public function fromType(?\ReflectionType $type): array

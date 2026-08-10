@@ -1,6 +1,11 @@
 <?php // src/Metrics/PrometheusTextFormatter.php
 namespace Falco\Metrics;
 
+/**
+ * Renders a {@see Registry} into Prometheus' text exposition format (HELP/TYPE
+ * lines, `_bucket`/`_sum`/`_count` for histograms). Label sets with `le` are
+ * appended inside the existing `{...}` group.
+ */
 final class PrometheusTextFormatter
 {
     public function format(Registry $registry): string

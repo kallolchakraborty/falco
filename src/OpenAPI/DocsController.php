@@ -4,6 +4,7 @@ namespace Falco\OpenAPI;
 use Falco\App;
 use Falco\Response;
 
+/** Serves `/openapi.json` (generated schema) and `/docs` (Swagger UI, CDN-bundled). */
 final class DocsController
 {
     public function __construct(private App $app) {}

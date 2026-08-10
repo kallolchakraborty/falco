@@ -5,6 +5,11 @@ use Falco\Http\MiddlewareInterface;
 use Falco\Request;
 use Falco\Response;
 
+/**
+ * Per-IP sliding-window rate limiter. On the first request that would exceed
+ * the limit it returns 429 with `Retry-After`; otherwise it decrements
+ * `X-RateLimit-Remaining` on the response.
+ */
 final class RateLimitMiddleware implements MiddlewareInterface
 {
     public function __construct(

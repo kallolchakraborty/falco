@@ -1,6 +1,11 @@
 <?php // src/Middleware/InMemoryRateLimitStore.php
 namespace Falco\Middleware;
 
+/**
+ * Default per-process sliding-window store. Sufficient for a single
+ * `php -S` / Swoole worker; use {@see SqliteRateLimitStore} for
+ * multi-worker php-fpm where the window must be shared.
+ */
 final class InMemoryRateLimitStore implements RateLimitStoreInterface
 {
     private array $hits = [];

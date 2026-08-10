@@ -1,10 +1,21 @@
 <?php // src/Router.php
 namespace Falco;
 
+/**
+ * Static route table with compile-once path matching.
+ *
+ * Routes are stored in insertion order and matched by linear scan (O(routes)).
+ * Each route's path template is compiled to a single anchored PCRE exactly once
+ * and memoized in {@see $compiled}, so matching is a cheap `preg_match` per
+ * request after warmup.
+ */
 final class Router
 {
     /** @var Route[] */
     private array $routes = [];
+
+    /** @var array<string,string> Memoized compiled regexes keyed by path template. */
+    private array $compiled = [];
 
     public function add(string $method, string $path, callable $handler, ?string $responseModel = null, array $options = []): void
     {
@@ -32,7 +43,27 @@ final class Router
         return $this->routes;
     }
 
+    /**
+     * Match a request path against a route template, returning named path params.
+     *
+     * Templates use `{name}` segments; each becomes a named capture `(?P<name>[^/]+)`
+     * so a single segment can never consume a `/` (no greedy over-matching, no regex
+     * injection — names are `\w+` only). The compiled PCRE is cached per template.
+     */
     private function matchTemplate(string $template, string $path): ?array
+    {
+        $regex = $this->compiled[$template] ??= $this->compile($template);
+        if (!preg_match($regex, $path, $matches)) {
+            return null;
+        }
+        $params = [];
+        foreach ($matches as $key => $value) {
+            if (is_string($key)) $params[$key] = $value;
+        }
+        return $params;
+    }
+
+    private function compile(string $template): string
     {
         $parts = preg_split('/\{(\w+)\}/', $template, -1, PREG_SPLIT_DELIM_CAPTURE);
         $regex = '^';
@@ -42,14 +73,6 @@ final class Router
                 $regex .= '(?P<' . $parts[$i + 1] . '>[^/]+)';
             }
         }
-        $regex .= '$';
-        if (!preg_match('#' . $regex . '#', $path, $matches)) {
-            return null;
-        }
-        $params = [];
-        foreach ($matches as $key => $value) {
-            if (is_string($key)) $params[$key] = $value;
-        }
-        return $params;
+        return '#' . $regex . '$#';
     }
 }

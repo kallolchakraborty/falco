@@ -9,6 +9,22 @@ use Falco\Security\JwtClaims;
 use Falco\Validation\Validator;
 use Falco\Validation\ValidationException;
 
+/**
+ * Binds a route handler's parameters by reflection, in this priority order:
+ *
+ *  1. #[Depends]            → DependencyContainer (DI)
+ *  2. Request / Response    → framework singletons
+ *  3. Model subclass        → treated as #[Body] and validated
+ *  4. JwtClaims             → read from request attribute 'user' (set by AuthMiddleware)
+ *  5. path parameter        → from RouteMatch.pathParams, coerced to type
+ *  6. #[Header]             → request header (lowercased, case-insensitive)
+ *  7. #[Body]               → JSON body, coerced to type
+ *  8. #[Query] / (default)  → query-string value, coerced to type
+ *
+ * A bare scalar/array parameter with no attribute defaults to query resolution
+ * (matching FastAPI ergonomics). Missing required values throw a
+ * FastAPI-shaped ValidationException (422).
+ */
 final class ParamResolver
 {
     public function __construct(

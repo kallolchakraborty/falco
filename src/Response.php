@@ -1,6 +1,10 @@
 <?php // src/Response.php
 namespace Falco;
 
+/**
+ * Immutable-ish HTTP response. `send()` emits status, headers, and body
+ * (JSON-encoded for structured data) — the terminal step of a request.
+ */
 final class Response
 {
     public function __construct(

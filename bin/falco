@@ -1,5 +1,7 @@
 #!/usr/bin/env php
 <?php // bin/falco
+// CLI entry point. `serve <app.php>` boots PHP's built-in server pointed at bin/server.php
+// (the app file is exposed to the router via FALCO_APP). `--swoole` uses Runtime/SwooleRuntime.
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 $command = $argv[1] ?? 'help';

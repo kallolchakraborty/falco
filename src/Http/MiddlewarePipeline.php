@@ -4,6 +4,12 @@ namespace Falco\Http;
 use Falco\Request;
 use Falco\Response;
 
+/**
+ * Onion-style middleware dispatcher. Walks the middleware list, passing each
+ * a `$next` closure that advances to the next layer; once exhausted, the
+ * terminal callable is invoked. Supports both MiddlewareInterface instances
+ * and plain callables.
+ */
 final class MiddlewarePipeline
 {
     /** @var (MiddlewareInterface|callable)[] */

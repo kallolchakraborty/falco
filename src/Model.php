@@ -4,6 +4,11 @@ namespace Falco;
 use Falco\Validation\Validator;
 use Falco\Validation\ValidationException;
 
+/**
+ * Base class for request-body models. Subclass it and declare public typed
+ * properties; {@see Validator} coerces incoming data and {@see fromArray()}
+ * throws a FastAPI-shaped `ValidationException` (422) for missing/invalid fields.
+ */
 abstract class Model
 {
     public static function fromArray(array $data): static

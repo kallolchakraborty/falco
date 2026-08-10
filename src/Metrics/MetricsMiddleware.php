@@ -5,6 +5,11 @@ use Falco\Http\MiddlewareInterface;
 use Falco\Request;
 use Falco\Response;
 
+/**
+ * Records `falco_http_requests_total` (count by method+status) and
+ * `falco_http_request_duration_seconds` (latency histogram) into a
+ * {@see Registry}, which `/metrics` then formats for Prometheus.
+ */
 final class MetricsMiddleware implements MiddlewareInterface
 {
     private Counter $requestCounter;

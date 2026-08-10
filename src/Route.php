@@ -1,6 +1,10 @@
 <?php // src/Route.php
 namespace Falco;
 
+/**
+ * A single registered route: HTTP method, path template, handler, and
+ * optional response model + per-route options (e.g. `middleware`).
+ */
 final class Route
 {
     public function __construct(

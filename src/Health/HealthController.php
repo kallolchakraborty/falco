@@ -5,6 +5,11 @@ use Falco\App;
 use Falco\HttpException;
 use Falco\Response;
 
+/**
+ * Registers `/health/live` (always 200) and `/health/ready` (runs the
+ * provided check callbacks; 503 + `checks` body if any fail). Used by
+ * `examples/items/app.php` to gate readiness on the SQLite DB.
+ */
 final class HealthController
 {
     /** @param array<string, callable(): bool> $checks */

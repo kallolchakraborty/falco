@@ -1,6 +1,7 @@
 <?php // bin/server.php
-// PHP built-in server router. Run via: php -S localhost:8000 bin/server.php
-// The app file path is passed through the FALCO_APP environment variable.
+// Router for PHP's built-in server (`php -S`). The app file path is supplied
+// through the FALCO_APP environment variable (set by `bin/falco serve`).
+// Used by: `php bin/falco serve app.php` (dev) and nginx+php-fpm deployments.
 require dirname(__DIR__) . '/vendor/autoload.php';
 $app = require getenv('FALCO_APP');
 if (!$app instanceof \Falco\App) {

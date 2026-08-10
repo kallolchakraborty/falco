@@ -2,6 +2,11 @@
 
 namespace Falco\Security;
 
+/**
+ * HS256 JWT encode/decode (PSR-15-independent, no dependencies).
+ * Secret must be >= 32 bytes. Signatures use `hash_equals`; payloads carry
+ * `iat` and `exp`; tokens are base64url-encoded.
+ */
 final class JwtService
 {
     private string $secret;

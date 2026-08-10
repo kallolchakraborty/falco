@@ -51,6 +51,11 @@ spl_autoload_register(function (string $class): void {
 });
 ```
 
+## Documentation
+
+- **`docs/DEVELOPER-GUIDE.md`** — a top-to-bottom developer manual (bootstrap, routing, parameter resolution, models, validation, middleware, JWT auth, rate limiting, metrics, health, data, runtimes, testing).
+- **`docs/PRODUCTION.md`** — environment variables, deploy targets, and security notes.
+
 ## Quick start
 
 ```php

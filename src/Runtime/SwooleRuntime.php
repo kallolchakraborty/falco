@@ -4,6 +4,11 @@ namespace Falco\Runtime;
 use Falco\App;
 use Falco\Request;
 
+/**
+ * Optional long-lived Swoole runtime. On each request it rebuilds a
+ * {@see Request} from the Swoole request and calls App::handle(). Requires
+ * `ext-swoole`; {@see serve()} throws a clear error otherwise.
+ */
 final class SwooleRuntime
 {
     public function __construct(

@@ -1,6 +1,11 @@
 <?php // src/Data/Connection.php
 namespace Falco\Data;
 
+/**
+ * Thin, zero-abstraction PDO wrapper. `query()` returns a prepared+executed
+ * PDOStatement; `exec()` returns affected row count. Any PDO DSN works
+ * (SQLite for the example, Postgres/MySQL in production).
+ */
 final class Connection
 {
     private \PDO $pdo;

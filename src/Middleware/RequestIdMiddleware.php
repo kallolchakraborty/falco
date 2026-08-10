@@ -5,6 +5,11 @@ use Falco\Http\MiddlewareInterface;
 use Falco\Request;
 use Falco\Response;
 
+/**
+ * Propagates `x-request-id` if sent by the client, otherwise generates a
+ * UUIDv4-like id. Stamps the response header and stores the id on request
+ * attributes for log correlation.
+ */
 final class RequestIdMiddleware implements MiddlewareInterface
 {
     public function handle(Request $request, callable $next): Response

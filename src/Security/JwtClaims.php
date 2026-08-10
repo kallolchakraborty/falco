@@ -2,6 +2,11 @@
 
 namespace Falco\Security;
 
+/**
+ * Decoded JWT claims attached to the request by {@see AuthMiddleware} under
+ * attribute 'user'. Implements ArrayAccess so handlers/tests can read
+ * `$claims['sub']` while typed handlers use `$claims->get('sub')`.
+ */
 final class JwtClaims implements \ArrayAccess
 {
     public function __construct(private array $claims) {}

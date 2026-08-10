@@ -8,6 +8,11 @@ use Falco\Request;
 use Falco\Response;
 use Falco\Route;
 
+/**
+ * Generates an OpenAPI 3.1 document from the App's route table by reflection.
+ * Model subclasses referenced as request bodies or response models are emitted
+ * as `components.schemas` and referenced with `$ref` (no hand-written annotations).
+ */
 final class OpenApiGenerator
 {
     public function generate(App $app): array

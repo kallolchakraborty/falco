@@ -3,6 +3,12 @@ namespace Falco\Params;
 
 use Falco\Request;
 
+/**
+ * Tiny lazy DI for #{Depends}. Resolves by callable/function name or
+ * `Class::__invoke`; class instances are built via reflection, using default
+ * values for optional constructor params (no autowiring of required params).
+ * Per-instance results are memoized so a dependency is built at most once.
+ */
 final class DependencyContainer
 {
     private array $cache = [];

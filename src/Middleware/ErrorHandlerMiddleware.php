@@ -7,6 +7,11 @@ use Falco\Response;
 use Falco\HttpException;
 use Falco\Validation\ValidationException;
 
+/**
+ * Converts thrown exceptions into JSON responses:
+ * ValidationException → 422, HttpException → its status code, other Throwable → 500
+ * (internals only when `debug` is true).
+ */
 final class ErrorHandlerMiddleware implements MiddlewareInterface
 {
     public function __construct(private bool $debug = false) {}

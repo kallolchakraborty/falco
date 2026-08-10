@@ -1,10 +1,9 @@
 <?php
 // Shared-hosting env bootstrap.
 // On hosts with no process environment (Hostinger Premium, etc.) this is how
-// you feed FALCO_* into the app: copy examples/items/env.example.php to
-// examples/items/env.php and edit the values. Environment/process vars found
-// via getenv() are honored as a fallback, so this is a no-op locally if you
-// already export real env vars.
+// you feed FALCO_* into the app: copy env.example.php to env.php and edit the
+// values. Real environment variables (getenv()) take precedence, so this is a
+// no-op where env vars already exist.
 $envFile = __DIR__ . '/env.php';
 if (is_readable($envFile)) {
     $env = require $envFile;
